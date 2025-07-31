@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dalfox Web GUI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+        }
+        .tab-button.active {
+            background-color: #E74C3C; /* Alizarin Red for Dalfox theme */
+            color: black;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Custom scrollbar for output area */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #2C3E50; /* Dark Blue/Grey */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #E74C3C; /* Alizarin Red */
+            border-radius: 10px;
+            border: 3px solid #2C3E50;
+        }
+        .custom-scrollbar::-webkit-scrollbar-corner {
+            background: #2C3E50;
+        }
+
+        /* Specific colors for Dalfox output */
+        .output-green { color: #2ECC71; } /* Emerald Green - for found XSS */
+        .output-red { color: #E74C3C; }   /* Alizarin Red - for errors/vulnerable */
+        .output-blue { color: #3498DB; }  /* Peter River Blue - for info/starting */
+        .output-orange { color: #F39C12; } /* Orange - for warnings */
+        .output-default { color: #ECF0F1; } /* Light Grey */
+        .highlight { background-color: yellow; color: black; }
+
+        /* Help popup styling */
+        .help-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2C3E50; /* Dark Blue/Grey */
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #E74C3C; /* Add a border for better visibility */
+        }
+        .help-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8); /* Dark modal background */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #1a202c; /* Modal background */
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #E74C3C; /* Red border for modal */
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #E74C3C;
+            margin-bottom: 15px;
+        }
+        .modal-header h2 {
+            @apply text-xl font-semibold text-red-400; /* Red modal title */
+        }
+        .modal-close {
+            @apply text-gray-400 hover:text-red-400 text-2xl font-bold;
+            cursor: pointer;
+        }
+        .modal-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            @apply text-gray-300;
+        }
+        .modal-footer {
+            padding-top: 15px;
+            border-top: 1px solid #E74C3C;
+            margin-top: 15px;
+            text-align: right;
+        }
+
+        /* Input field styling */
+        input[type="text"], input[type="number"], select, textarea {
+            @apply bg-gray-600 text-white rounded-md border border-gray-500 shadow-sm focus:border-red-500 focus:ring focus:ring-red-500 focus:ring-opacity-50 p-2;
+        }
+        input[type="checkbox"] {
+            @apply form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500;
+        }
+
+        /* Button styling */
+        .btn-primary {
+            @apply px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 flex items-center justify-center transition-colors duration-200;
+        }
+        .btn-secondary {
+            @apply px-4 py-2 bg-gray-700 text-gray-200 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 flex items-center justify-center transition-colors duration-200;
+        }
+        .btn-success {
+            @apply px-6 py-3 bg-green-600 text-white rounded-lg text-lg font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 flex items-center transition-colors duration-200 transform hover:scale-105;
+        }
+        .btn-danger {
+            @apply px-6 py-3 bg-red-600 text-white rounded-lg text-lg font-semibold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 flex items-center transition-colors duration-200 transform hover:scale-105;
+        }
+        .btn-info {
+            @apply px-6 py-3 bg-purple-600 text-white rounded-lg text-lg font-semibold hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 flex items-center transition-colors duration-200 transform hover:scale-105;
+        }
+    </style>
+</head>
+<body class="p-4 min-h-screen flex flex-col items-center">
+    <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-6xl mb-6">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-3xl font-bold text-red-400">Dalfox Web GUI</h1>
+            <div class="flex space-x-2">
+                <button id="install_dalfox_linux_button" class="btn-primary">
+                    <i data-lucide="download" class="w-5 h-5 mr-2"></i> Install Dalfox (Linux)
+                </button>
+                <button id="install_dalfox_termux_button" class="btn-primary">
+                    <i data-lucide="download" class="w-5 h-5 mr-2"></i> Install Dalfox (Termux)
+                </button>
+                <button id="download_dalfox_windows_button" class="btn-primary">
+                    <i data-lucide="download" class="w-5 h-5 mr-2"></i> Download Dalfox (Windows)
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="flex flex-wrap justify-center bg-gray-700 rounded-t-lg p-2 mb-4">
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600 active" data-tab="target">Target</button>
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600" data-tab="scan-options">Scan Options</button>
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600" data-tab="payloads">Payloads</button>
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600" data-tab="headers-auth">Headers/Auth</button>
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600" data-tab="output">Output</button>
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600" data-tab="advanced">Advanced</button>
+            <button class="tab-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-red-600" data-tab="examples">Examples</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="tab-content-container" class="bg-gray-700 p-4 rounded-b-lg mb-4 max-h-[500px] overflow-y-auto custom-scrollbar">
+            <!-- Target Tab -->
+            <div id="target" class="tab-content active">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Target Options</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center">
+                        <label for="url_entry" class="w-48 text-right pr-4">Target URL:</label>
+                        <input type="text" id="url_entry" name="url_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Target URL to scan (e.g., https://example.com/search?q=test).')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="list_file_entry" class="w-48 text-right pr-4">Target List File (-L):</label>
+                        <input type="text" id="list_file_entry" name="list_file_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('File containing a list of URLs to scan (one per line).')">?</button>
+                    </div>
+                    <div class="flex items-start">
+                        <label for="data_entry" class="w-48 text-right pr-4 pt-2">POST Data (-d):</label>
+                        <textarea id="data_entry" name="data_entry" rows="4" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()"></textarea>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('HTTP POST data (e.g., \'name=test&id=1\').')">?</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scan Options Tab -->
+            <div id="scan-options" class="tab-content">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Scan Options</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="blind_xss_var" name="blind_xss_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="blind_xss_var" class="ml-2">Blind XSS (--blind)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Enable blind XSS detection.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="skip_bav_var" name="skip_bav_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="skip_bav_var" class="ml-2">Skip BAV (--skip-bav)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Skip basic blind XSS vector.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="skip_grepping_var" name="skip_grepping_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="skip_grepping_var" class="ml-2">Skip Grepping (--skip-grepping)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Skip grepping reflected data.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="skip_mining_var" name="skip_mining_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="skip_mining_var" class="ml-2">Skip Mining (--skip-mining)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Skip mining parameters from response.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="skip_url_encoding_var" name="skip_url_encoding_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="skip_url_encoding_var" class="ml-2">Skip URL Encoding (--skip-url-encoding)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Skip URL encoding for payloads.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="no_color_var" name="no_color_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="no_color_var" class="ml-2">No Color (--no-color)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Disable color output.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="no_redirect_var" name="no_redirect_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="no_redirect_var" class="ml-2">No Redirect (--no-redirect)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Do not follow HTTP redirects.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="follow_redirect_var" name="follow_redirect_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="follow_redirect_var" class="ml-2">Follow Redirect (--follow-redirect)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Always follow HTTP redirects.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="timeout_entry" class="w-48 text-right pr-4">Timeout (--timeout):</label>
+                        <input type="number" id="timeout_entry" name="timeout_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('HTTP request timeout in seconds (default: 10).')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="delay_entry" class="w-48 text-right pr-4">Delay (--delay):</label>
+                        <input type="number" id="delay_entry" name="delay_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Delay between requests in milliseconds (default: 0).')">?</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payloads Tab -->
+            <div id="payloads" class="tab-content">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Payload Options</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center">
+                        <label for="payload_entry" class="w-48 text-right pr-4">Custom Payload (--payload):</label>
+                        <input type="text" id="payload_entry" name="payload_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Use a custom XSS payload (e.g., \'<script>alert(1)</script>\').')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="payload_file_entry" class="w-48 text-right pr-4">Payload File (--payload-file):</label>
+                        <input type="text" id="payload_file_entry" name="payload_file_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Load payloads from a specified file (one payload per line).')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="custom_payload_var" name="custom_payload_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="custom_payload_var" class="ml-2">Enable Custom Payload</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Enable custom payload usage. This is a GUI helper, not a direct Dalfox flag.')">?</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Headers/Auth Tab -->
+            <div id="headers-auth" class="tab-content">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Headers & Authentication</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-start">
+                        <label for="header_entry" class="w-48 text-right pr-4 pt-2">Headers (-H):</label>
+                        <textarea id="header_entry" name="header_entry" rows="4" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()"></textarea>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Add custom HTTP headers (one per line, e.g., \'User-Agent: Mozilla/5.0\').')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="cookie_entry" class="w-48 text-right pr-4">Cookie (-C):</label>
+                        <input type="text" id="cookie_entry" name="cookie_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Set HTTP cookie (e.g., \'PHPSESSID=abc\').')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="user_agent_entry" class="w-48 text-right pr-4">User-Agent (--user-agent):</label>
+                        <input type="text" id="user_agent_entry" name="user_agent_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Set custom User-Agent header.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="proxy_entry" class="w-48 text-right pr-4">Proxy (--proxy):</label>
+                        <input type="text" id="proxy_entry" name="proxy_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Set HTTP/SOCKS proxy (e.g., \'http://127.0.0.1:8080\').')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="basic_auth_entry" class="w-48 text-right pr-4">Basic Auth (--basic-auth):</label>
+                        <input type="text" id="basic_auth_entry" name="basic_auth_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Set Basic Authentication (e.g., \'user:pass\').')">?</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Tab -->
+            <div id="output" class="tab-content">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Output Options</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center">
+                        <label for="output_file_entry" class="w-48 text-right pr-4">Output File (-o):</label>
+                        <input type="text" id="output_file_entry" name="output_file_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Save scan results to a specified file.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="verbose_var" name="verbose_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="verbose_var" class="ml-2">Verbose (-v)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Increase verbosity level.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="debug_var" name="debug_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="debug_var" class="ml-2">Debug (-D)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Enable debug mode.')">?</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Tab -->
+            <div id="advanced" class="tab-content">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Advanced Options</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center">
+                        <label for="concurrency_entry" class="w-48 text-right pr-4">Concurrency (--concurrency):</label>
+                        <input type="number" id="concurrency_entry" name="concurrency_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Number of concurrent HTTP requests (default: 10).')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="waf_bypass_var" name="waf_bypass_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="waf_bypass_var" class="ml-2">WAF Bypass (--waf-bypass)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Enable WAF bypass techniques.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="skip_waf_detect_var" name="skip_waf_detect_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="skip_waf_detect_var" class="ml-2">Skip WAF Detection (--skip-waf-detect)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Skip WAF detection.')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <label for="only_param_entry" class="w-48 text-right pr-4">Only Parameter (-p):</label>
+                        <input type="text" id="only_param_entry" name="only_param_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()">
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Scan only specified parameter(s) (comma-separated).')">?</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="ignore_return_var" name="ignore_return_var" class="form-checkbox h-5 w-5 text-red-600 rounded bg-gray-600 border-gray-500" onchange="generateCommand()">
+                        <label for="ignore_return_var" class="ml-2">Ignore Return (--ignore-return)</label>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Ignore return codes from HTTP requests.')">?</button>
+                    </div>
+                    <div class="flex items-start">
+                        <label for="additional_args_entry" class="w-48 text-right pr-4 pt-2">Additional Arguments:</label>
+                        <textarea id="additional_args_entry" name="additional_args_entry" rows="4" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="generateCommand()"></textarea>
+                        <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="showHelp('Any other Dalfox arguments not covered by the GUI. Enter them exactly as you would on the command line (e.g., \'--skip-waf-detect\').')">?</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Examples Tab -->
+            <div id="examples" class="tab-content">
+                <h2 class="text-xl font-semibold text-red-300 mb-4">Examples</h2>
+                <div class="mb-4 flex items-center">
+                    <label for="example_search_entry" class="w-32 text-right pr-4">Search Examples:</label>
+                    <input type="text" id="example_search_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="filterExamples()">
+                    <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="clearExampleSearch()">Clear Search</button>
+                </div>
+                <div id="examples_list" class="grid grid-cols-1 gap-4">
+                    <!-- Examples will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Generated Command -->
+        <div class="bg-gray-700 p-4 rounded-lg shadow-md mb-4">
+            <h2 class="text-xl font-semibold text-red-300 mb-2">Generated Dalfox Command</h2>
+            <textarea id="command_text" class="w-full h-24 p-2 rounded bg-gray-900 text-red-400 font-mono text-sm resize-none custom-scrollbar" readonly></textarea>
+            <div class="flex justify-end mt-2 space-x-2">
+                <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors duration-200" onclick="copyCommand()">Copy Command</button>
+                <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors duration-200" onclick="generateCommand()">Generate Command</button>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-center space-x-4 mb-4">
+            <button id="run_dalfox_button" class="btn-success">
+                <i data-lucide="play" class="w-6 h-6 mr-2"></i> Run Dalfox
+            </button>
+            <button class="btn-danger" onclick="clearOutput()">
+                <i data-lucide="trash-2" class="w-6 h-6 mr-2"></i> Clear Output
+            </button>
+            <button class="btn-info" onclick="saveOutput()">
+                <i data-lucide="save" class="w-6 h-6 mr-2"></i> Save Output
+            </button>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="status_bar" class="bg-gray-900 text-white text-sm p-2 rounded-md mb-4 text-center">Ready</div>
+
+        <!-- Dalfox Output -->
+        <div class="bg-gray-700 p-4 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold text-red-300 mb-2">Dalfox Output</h2>
+            <div class="flex items-center mb-2">
+                <label for="search_entry" class="pr-2">Search:</label>
+                <input type="text" id="search_entry" class="flex-1 p-2 rounded bg-gray-600 text-white border border-gray-500" onkeyup="searchOutput()">
+                <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="searchOutput()">Search</button>
+                <button class="ml-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="clearSearchHighlight()">Clear Search</button>
+            </div>
+            <pre id="output_text" class="w-full h-96 p-2 rounded bg-gray-900 text-gray-200 font-mono text-sm overflow-auto custom-scrollbar"></pre>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-gray-500 text-sm mt-4">
+        Created by khedr0x00
+    </div>
+
+    <!-- Global Message/Alert Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="messageModalTitle">Alert</h2>
+                <span class="modal-close" onclick="closeMessageModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="messageModalBody"></div>
+            <div class="modal-footer">
+                <button onclick="closeMessageModal()" class="btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal for Linux/Termux Installation -->
+    <div id="installConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="installConfirmModalTitle">Confirm Installation</h2>
+                <span class="modal-close" onclick="closeInstallConfirmModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="installConfirmModalBody"></div>
+            <div class="modal-footer flex justify-end space-x-4">
+                <button onclick="closeInstallConfirmModal()" class="btn-secondary">Cancel</button>
+                <button id="confirmInstallButton" class="btn-success">Install Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Output Modal -->
+    <div id="exampleOutputModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="exampleOutputModalTitle">Example Output</h2>
+                <span class="modal-close" onclick="closeExampleOutputModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <pre id="exampleOutputModalText" class="w-full h-auto p-2 rounded bg-gray-900 text-gray-200 font-mono text-sm overflow-auto custom-scrollbar"></pre>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeExampleOutputModal()" class="btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Global variable to store examples
+        let allExamples = [];
+        let currentScanId = null;
+        let pollInterval = null;
+        let searchStartIndex = 0; // For incremental search in output
+        let currentOutputBuffer = ""; // Buffer to accumulate real-time output
+
+        // Function to show/hide tabs
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            generateCommand(); // Regenerate command on tab change
+        }
+
+        // Event listeners for tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                showTab(button.dataset.tab);
+            });
+        });
+
+        // --- Helper for showing custom modals ---
+        function showMessageModal(title, message, isHtml = false) {
+            document.getElementById('messageModalTitle').innerText = title;
+            const messageBody = document.getElementById('messageModalBody');
+            if (isHtml) {
+                messageBody.innerHTML = message;
+            } else {
+                messageBody.innerText = message;
+            }
+            document.getElementById('messageModal').style.display = 'flex';
+        }
+
+        function closeMessageModal() {
+            document.getElementById('messageModal').style.display = 'none';
+        }
+
+        function showInstallConfirmModal(title, message, onConfirm) {
+            document.getElementById('installConfirmModalTitle').innerText = title;
+            document.getElementById('installConfirmModalBody').innerHTML = message;
+            const confirmButton = document.getElementById('confirmInstallButton');
+            confirmButton.onclick = () => {
+                closeInstallConfirmModal();
+                onConfirm();
+            };
+            document.getElementById('installConfirmModal').style.display = 'flex';
+        }
+
+        function closeInstallConfirmModal() {
+            document.getElementById('installConfirmModal').style.display = 'none';
+        }
+
+        function showExampleOutputModal(title, output) {
+            document.getElementById('exampleOutputModalTitle').innerText = title;
+            const outputPre = document.getElementById('exampleOutputModalText');
+            outputPre.innerHTML = ''; // Clear previous content
+
+            // Apply coloring based on Dalfox-like output
+            insertColoredText(outputPre, output);
+            document.getElementById('exampleOutputModal').style.display = 'flex';
+        }
+
+        function closeExampleOutputModal() {
+            document.getElementById('exampleOutputModal').style.display = 'none';
+        }
+
+
+        // Function to collect form data
+        function getFormData() {
+            const formData = {};
+            document.querySelectorAll('#tab-content-container input, #tab-content-container select, #tab-content-container textarea').forEach(element => {
+                if (element.type === 'checkbox') {
+                    formData[element.id] = element.checked;
+                } else if (element.type === 'number') {
+                    formData[element.id] = element.value ? parseFloat(element.value) : '';
+                }
+                else {
+                    formData[element.id] = element.value;
+                }
+            });
+            return formData;
+        }
+
+        // Function to generate Dalfox command
+        async function generateCommand() {
+            const formData = getFormData();
+            try {
+                const response = await fetch('/generate_command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+                const data = await response.json();
+                document.getElementById('command_text').value = data.command;
+            } catch (error) {
+                console.error('Error generating command:', error);
+                document.getElementById('command_text').value = 'Error generating command.';
+            }
+        }
+
+        // Function to copy command to clipboard
+        function copyCommand() {
+            const commandText = document.getElementById('command_text');
+            commandText.select();
+            document.execCommand('copy');
+            showMessageModal('Command Copied', 'The command has been copied to your clipboard!');
+        }
+
+        // Function to run Dalfox
+        async function runDalfox() {
+            if (currentScanId) {
+                showMessageModal('Dalfox Running', 'Dalfox is already running. Please wait for it to finish.');
+                return;
+            }
+
+            const command = document.getElementById('command_text').value;
+            if (!command) {
+                showMessageModal('Error', 'No command to run.');
+                return;
+            }
+
+            // Disable run button and clear output
+            document.getElementById('run_dalfox_button').disabled = true;
+            document.getElementById('output_text').innerHTML = '';
+            currentOutputBuffer = "";
+            clearSearchHighlight();
+            showStatus('Starting Dalfox...', 'blue');
+
+            try {
+                const response = await fetch('/run_dalfox', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ command: command }),
+                });
+                const data = await response.json();
+                if (data.status === 'error') {
+                    showMessageModal('Error', data.message);
+                    showStatus(`Error: ${data.message}`, 'red');
+                    document.getElementById('run_dalfox_button').disabled = false;
+                } else {
+                    currentScanId = data.scan_id;
+                    showStatus(`Dalfox scan started (ID: ${currentScanId}). Fetching output...`, 'blue');
+                    // Start polling for output
+                    pollInterval = setInterval(pollOutput, 500); // Poll every 500ms
+                }
+            } catch (error) {
+                console.error('Error starting Dalfox:', error);
+                showMessageModal('Error', 'An error occurred while starting Dalfox.');
+                showStatus('An error occurred while starting Dalfox.', 'red');
+                document.getElementById('run_dalfox_button').disabled = false;
+            }
+        }
+
+        // Polling for Dalfox output
+        async function pollOutput() {
+            if (!currentScanId) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/get_scan_output/${currentScanId}`);
+                const data = await response.json();
+                const outputTextElement = document.getElementById('output_text');
+                
+                if (data.output) {
+                    // Only append new output to the buffer
+                    const newOutputSegment = data.output.substring(currentOutputBuffer.length);
+                    currentOutputBuffer += newOutputSegment;
+                    insertColoredText(outputTextElement, currentOutputBuffer);
+                }
+
+                if (data.status === 'running') {
+                    showStatus('Dalfox is running...', 'blue');
+                } else if (data.status === 'completed' || data.status === 'success' || data.status === 'error') {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    currentScanId = null;
+                    currentOutputBuffer = data.output; // Get final complete output
+                    insertColoredText(outputTextElement, currentOutputBuffer);
+                    if (data.status === 'completed' || data.status === 'success') {
+                        showStatus('Dalfox scan completed successfully.', 'green');
+                    } else {
+                        showStatus(`Scan failed: ${data.message || 'Unknown error'}`, 'red');
+                        showMessageModal('Scan Error', data.message || 'An unknown error occurred during the scan.');
+                    }
+                    document.getElementById('run_dalfox_button').disabled = false;
+                    // Re-enable install buttons if they were disabled for installation
+                    document.getElementById('install_dalfox_linux_button').disabled = false;
+                    document.getElementById('install_dalfox_termux_button').disabled = false;
+                    document.getElementById('download_dalfox_windows_button').disabled = false;
+                } else if (data.status === 'not_found') {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    currentScanId = null;
+                    showStatus(`Scan failed: ${data.message || 'Scan ID not found or expired.'}`, 'red');
+                    showMessageModal('Scan Error', data.message || 'Scan ID not found or expired.');
+                    document.getElementById('run_dalfox_button').disabled = false;
+                    // Re-enable install buttons if they were disabled for installation
+                    document.getElementById('install_dalfox_linux_button').disabled = false;
+                    document.getElementById('install_dalfox_termux_button').disabled = false;
+                    document.getElementById('download_dalfox_windows_button').disabled = false;
+                }
+            } catch (error) {
+                console.error('Error polling output:', error);
+                showMessageModal('Polling Error', 'An error occurred while fetching output.');
+                showStatus('An error occurred while fetching output.', 'red');
+                clearInterval(pollInterval);
+                pollInterval = null;
+                currentScanId = null;
+                document.getElementById('run_dalfox_button').disabled = false;
+                // Re-enable install buttons if they were disabled for installation
+                document.getElementById('install_dalfox_linux_button').disabled = false;
+                document.getElementById('install_dalfox_termux_button').disabled = false;
+                document.getElementById('download_dalfox_windows_button').disabled = false;
+            }
+        }
+
+        // Helper to insert colored text based on Dalfox output patterns
+        function insertColoredText(element, text) {
+            element.innerHTML = ''; // Clear current content to re-insert with spans
+            const lines = text.split('\n');
+            const fragment = document.createDocumentFragment();
+
+            lines.forEach(line => {
+                const span = document.createElement('span');
+                let className = 'output-default';
+
+                if (line.toLowerCase().includes('vulnerable') || line.toLowerCase().includes('found xss')) {
+                    className = 'output-red'; // Highlight XSS findings in red
+                } else if (line.toLowerCase().includes('info') || line.toLowerCase().includes('starting dalfox') || line.toLowerCase().includes('completed') || line.toLowerCase().includes('executing command') || line.toLowerCase().includes('detected')) {
+                    className = 'output-blue';
+                } else if (line.toLowerCase().includes('warning')) {
+                    className = 'output-orange';
+                } else if (line.toLowerCase().includes('error') || line.toLowerCase().includes('failed')) {
+                    className = 'output-red';
+                }
+                
+                span.className = className;
+                span.textContent = line + '\n'; // Add newline back for pre tag
+                fragment.appendChild(span);
+            });
+            element.appendChild(fragment);
+            element.scrollTop = element.scrollHeight; // Scroll to bottom
+        }
+
+        // Function to clear output
+        function clearOutput() {
+            document.getElementById('output_text').innerHTML = '';
+            currentOutputBuffer = "";
+            showStatus('Ready');
+            clearSearchHighlight();
+            if (currentScanId) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+                currentScanId = null;
+            }
+        }
+
+        // Function to save output
+        async function saveOutput() {
+            const outputContent = document.getElementById('output_text').innerText;
+            if (!outputContent.trim()) {
+                showMessageModal('Save Output', 'No output to save.');
+                return;
+            }
+
+            // Prompt for filename (simple browser prompt)
+            const defaultFilename = `dalfox_output_${new Date().toISOString().slice(0,10)}.txt`;
+            const filename = prompt("Enter filename to save:", defaultFilename);
+
+            if (filename) {
+                try {
+                    const response = await fetch('/save_output', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: outputContent, filename: filename })
+                    });
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        showMessageModal('Save Output', `Output saved on the server. You can download it now.`);
+                        // Offer download link
+                        if (data.download_url) {
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = data.download_url;
+                            downloadLink.download = filename; // Suggest filename for download
+                            downloadLink.style.display = 'none';
+                            document.body.appendChild(downloadLink);
+                            downloadLink.click();
+                            document.body.removeChild(downloadLink);
+                        }
+                    } else {
+                        showMessageModal('Save Error', `Failed to save file: ${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('Error saving output:', error);
+                    showMessageModal('Save Error', `Failed to save file: ${error.message}`);
+                }
+            }
+        }
+
+        // Function to update status bar
+        function showStatus(message, color = 'white') {
+            const statusBar = document.getElementById('status_bar');
+            statusBar.textContent = message;
+            statusBar.style.color = color;
+        }
+
+        // Function to search output
+        function searchOutput() {
+            const searchTerm = document.getElementById('search_entry').value.trim().toLowerCase();
+            const outputTextElement = document.getElementById('output_text');
+            const fullText = outputTextElement.textContent; // Use textContent to get plain text
+
+            clearSearchHighlight(); // Clear existing highlights first
+
+            if (!searchTerm) {
+                searchStartIndex = 0;
+                return;
+            }
+
+            let found = false;
+            let newContent = '';
+            let lastIndex = 0;
+
+            const regex = new RegExp(searchTerm, 'gi'); // 'gi' for global and case-insensitive
+
+            let match;
+            while ((match = regex.exec(fullText)) !== null) {
+                found = true;
+                const index = match.index;
+                const matchedText = match[0];
+
+                // Append content before the match
+                newContent += escapeHtml(fullText.substring(lastIndex, index));
+                // Append the highlighted match
+                newContent += `<mark class="highlight">${escapeHtml(matchedText)}</mark>`;
+                lastIndex = index + matchedText.length;
+            }
+            newContent += escapeHtml(fullText.substring(lastIndex)); // Append remaining content
+
+            outputTextElement.innerHTML = newContent;
+
+            if (!found) {
+                showMessageModal('Search', `No occurrences of '${searchTerm}' found.`);
+            } else {
+                // Scroll to the first highlighted element
+                const firstHighlight = outputTextElement.querySelector('mark.highlight');
+                if (firstHighlight) {
+                    firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        // Function to clear search highlight
+        function clearSearchHighlight() {
+            const outputTextElement = document.getElementById('output_text');
+            const currentContent = outputTextElement.textContent; // Get plain text content
+            outputTextElement.innerHTML = ''; // Clear existing content
+            insertColoredText(outputTextElement, currentContent); // Re-insert without highlights
+            searchStartIndex = 0;
+        }
+
+        // Function to show help popup
+        function showHelp(helpText) {
+            const overlay = document.createElement('div');
+            overlay.className = 'help-popup-overlay';
+            overlay.onclick = () => {
+                document.body.removeChild(overlay);
+                document.body.removeChild(popup);
+            };
+            document.body.appendChild(overlay);
+
+            const popup = document.createElement('div');
+            popup.className = 'help-popup';
+            popup.innerHTML = `
+                <h3 class="text-xl font-bold text-red-300 mb-4">Help</h3>
+                <div class="flex-grow overflow-y-auto custom-scrollbar p-2 bg-gray-600 rounded text-gray-200 text-sm mb-4">
+                    ${helpText.replace(/\n/g, '<br>')}
+                </div>
+                <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md self-center" onclick="this.parentNode.parentNode.removeChild(this.parentNode); document.body.removeChild(document.querySelector('.help-popup-overlay'));">Close</button>
+            `;
+            document.body.appendChild(popup);
+        }
+
+        // --- Examples Tab Functions ---
+        async function loadExamples() {
+            try {
+                // Fetch examples from the backend (assuming /get_examples endpoint)
+                const response = await fetch('/get_examples');
+                if (response.ok) {
+                    allExamples = await response.json();
+                } else {
+                    // Fallback to hardcoded examples if backend fails
+                    console.warn("Could not fetch examples from backend, using hardcoded examples.");
+                    // Hardcoded examples will be provided in dalfox_examples.txt
+                    // For now, keep it empty or a minimal placeholder if you want to test
+                    // without the file being present initially.
+                    allExamples = []; 
+                }
+                filterExamples(); // Display all examples initially
+            } catch (error) {
+                console.error('Error loading examples:', error);
+                showStatus('Error loading examples. Please check dalfox_examples.txt and backend.', 'red');
+                allExamples = []; // Ensure it's empty if there's an error
+                filterExamples();
+            }
+        }
+
+
+        function filterExamples() {
+            const searchQuery = document.getElementById('example_search_entry').value.toLowerCase();
+            const examplesList = document.getElementById('examples_list');
+            examplesList.innerHTML = ''; // Clear current list
+
+            allExamples.forEach(example => {
+                if (example.name.toLowerCase().includes(searchQuery) || example.description.toLowerCase().includes(searchQuery)) {
+                    const exampleDiv = document.createElement('div');
+                    exampleDiv.className = 'bg-gray-800 p-4 rounded-lg shadow-md flex flex-col md:flex-row justify-between items-start md:items-center';
+                    exampleDiv.innerHTML = `
+                        <div>
+                            <h3 class="text-lg font-semibold text-red-300">${escapeHtml(example.name)}</h3>
+                            <p class="text-sm text-gray-400 mb-2 md:mb-0">${escapeHtml(example.description)}</p>
+                        </div>
+                        <div class="flex mt-2 md:mt-0 space-x-2">
+                            <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm" onclick="loadExampleOptions(${escapeHtml(JSON.stringify(example.options))})">Select</button>
+                            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-md text-sm" onclick="showExampleOutputModal('${escapeHtml(example.name)} Output', ${escapeHtml(JSON.stringify(example.example_output))})">Output</button>
+                        </div>
+                    `;
+                    examplesList.appendChild(exampleDiv);
+                }
+            });
+            lucide.createIcons(); // Re-render Lucide icons for new elements
+        }
+
+        function clearExampleSearch() {
+            document.getElementById('example_search_entry').value = '';
+            filterExamples();
+        }
+
+        function loadExampleOptions(options) {
+            clearAllInputs(); // Clear all inputs first
+
+            // Populate form fields with example options
+            for (const key in options) {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = options[key];
+                    } else if (element.tagName === 'TEXTAREA') {
+                        element.value = options[key];
+                    } else {
+                        element.value = options[key];
+                    }
+                }
+            }
+            generateCommand(); // Re-generate command after loading
+            showMessageModal('Example Loaded', 'Example options have been loaded. Check other tabs and the generated command.');
+            showTab('target'); // Switch to target tab
+        }
+
+        // Helper to escape HTML for safe display
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                text = String(text);
+            }
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // Helper to unescape HTML entities (not strictly needed for this version, but good to have)
+        function unescapeHtml(html) {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            return doc.documentElement.textContent;
+        }
+
+        function clearAllInputs() {
+            document.querySelectorAll('#tab-content-container input[type="text"], #tab-content-container input[type="number"], #tab-content-container textarea').forEach(element => {
+                element.value = '';
+            });
+            document.querySelectorAll('#tab-content-container input[type="checkbox"]').forEach(element => {
+                element.checked = false;
+            });
+            document.querySelectorAll('#tab-content-container select').forEach(element => {
+                element.value = ''; // Clear dropdown selection
+            });
+            // Reset specific default values if any
+            document.getElementById('timeout_entry').value = '10'; // Default Dalfox timeout
+            document.getElementById('delay_entry').value = '0'; // Default Dalfox delay
+            document.getElementById('concurrency_entry').value = '10'; // Default Dalfox concurrency
+            generateCommand();
+        }
+
+        // Function to handle Dalfox installation
+        async function handleDalfoxInstallation(platformType) {
+            const linuxButton = document.getElementById('install_dalfox_linux_button');
+            const termuxButton = document.getElementById('install_dalfox_termux_button');
+            const windowsButton = document.getElementById('download_dalfox_windows_button');
+
+            // Disable all install buttons during an installation attempt
+            linuxButton.disabled = true;
+            termuxButton.disabled = true;
+            windowsButton.disabled = true;
+
+            showStatus('Checking system and preparing for installation...', 'blue');
+            document.getElementById('output_text').innerHTML = ''; // Clear output area
+            currentOutputBuffer = ""; // Clear output buffer for installation logs
+
+            if (platformType === 'linux' || platformType === 'termux') {
+                const osName = platformType === 'termux' ? "Termux" : "Linux";
+                showInstallConfirmModal(
+                    'Install Dalfox',
+                    `Your operating system is <strong>${osName}</strong>. Do you want to install Dalfox now? This will require Go to be installed and might ask for your password in the server console if 'sudo' is used for Go installation.`,
+                    async () => {
+                        // This function will be called if the user confirms
+                        showStatus(`Installing Dalfox on ${osName}...`, 'blue');
+                        try {
+                            const response = await fetch('/install_dalfox', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ platform: platformType }) // Pass platform type to backend
+                            });
+                            const data = await response.json();
+
+                            if (data.status === 'error') {
+                                showStatus(`Dalfox installation failed: ${data.message}`, 'red');
+                                showMessageModal('Dalfox Installation Failed', `Failed to install/update Dalfox: ${data.message}<br><br>Output:<pre>${escapeHtml(data.output)}</pre>`, true);
+                                insertColoredText(document.getElementById('output_text'), data.output);
+                                // Re-enable buttons on error
+                                linuxButton.disabled = false;
+                                termuxButton.disabled = false;
+                                windowsButton.disabled = false;
+                            } else { // status is 'running' for real-time output
+                                currentScanId = data.scan_id; // Use the scan_id returned by the backend
+                                showStatus(`Dalfox installation started (ID: ${currentScanId}). Fetching output...`, 'blue');
+                                pollInterval = setInterval(pollOutput, 500); // Start polling for output
+                            }
+                        } catch (error) {
+                            console.error('Error during Dalfox installation fetch:', error);
+                            showStatus('An error occurred during installation.', 'red');
+                            showMessageModal('Dalfox Installation Error', `An error occurred while trying to install Dalfox: ${error.message}. Check server logs for more details.`);
+                            // Re-enable buttons on error
+                            linuxButton.disabled = false;
+                            termuxButton.disabled = false;
+                            windowsButton.disabled = false;
+                        }
+                    }
+                );
+            } else if (platformType === 'windows') {
+                const downloadMessage = `Dalfox cannot be installed directly via this web interface on Windows.
+                <br><br>
+                Please download the latest Windows binary from the official Dalfox GitHub releases page:
+                <br><br>
+                <a href="https://github.com/hahwul/dalfox/releases" target="_blank" class="text-red-400 hover:underline">Download Dalfox for Windows</a>
+                <br><br>
+                After downloading, extract the executable and add it to your system's PATH, or place it in the same directory as this tool.`;
+                showMessageModal('Install Dalfox', downloadMessage, true); // Use isHtml = true
+                showStatus('Dalfox installation is not directly supported on Windows via this interface.', 'orange');
+                // Re-enable buttons immediately for Windows as no backend process is started
+                linuxButton.disabled = false;
+                termuxButton.disabled = false;
+                windowsButton.disabled = false;
+            } else {
+                showMessageModal('Install Dalfox', `Dalfox installation is not automatically supported for your operating system (${navigator.platform}). Please install Dalfox manually.`);
+                showStatus('Dalfox installation is not supported for this system.', 'orange');
+                // Re-enable buttons immediately for unsupported OS
+                linuxButton.disabled = false;
+                termuxButton.disabled = false;
+                windowsButton.disabled = false;
+            }
+        }
+
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            generateCommand(); // Generate command on page load
+            loadExamples(); // Load examples for the Examples tab
+            document.getElementById('run_dalfox_button').addEventListener('click', runDalfox);
+            
+            // New event listeners for specific installation buttons
+            document.getElementById('install_dalfox_linux_button').addEventListener('click', () => handleDalfoxInstallation('linux'));
+            document.getElementById('install_dalfox_termux_button').addEventListener('click', () => handleDalfoxInstallation('termux'));
+            document.getElementById('download_dalfox_windows_button').addEventListener('click', () => handleDalfoxInstallation('windows'));
+        });
+    </script>
+</body>
+</html>

